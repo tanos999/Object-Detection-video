@@ -1,68 +1,53 @@
 import React, { useCallback, useState } from 'react';
 import axios from 'axios';
-import { UploadCloud, FileVideo, AlertCircle, CheckCircle2, Activity } from 'lucide-react';
 
 const VideoUploader = ({ onUploadComplete, apiUrl }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging,      setIsDragging]      = useState(false);
+  const [file,            setFile]            = useState(null);
+  const [uploading,       setUploading]       = useState(false);
+  const [error,           setError]           = useState(null);
+  const [uploadProgress,  setUploadProgress]  = useState(0);
 
+  /* ── Drag handlers ─────────────────────────────── */
   const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setIsDragging(true);
-    } else if (e.type === 'dragleave') {
-      setIsDragging(false);
-    }
+    if (e.type === 'dragenter' || e.type === 'dragover') setIsDragging(true);
+    else if (e.type === 'dragleave') setIsDragging(false);
   }, []);
 
-  const validateFile = (file) => {
+  /* ── Validation ─────────────────────────────── */
+  const validateFile = (f) => {
     setError(null);
-    if (!file) return false;
-    
-    const validTypes = ['video/mp4', 'video/quicktime'];
-    if (!validTypes.includes(file.type)) {
-      setError('Invalid file type. Only MP4 and MOV are allowed.');
+    if (!f) return false;
+    if (!['video/mp4', 'video/quicktime'].includes(f.type)) {
+      setError('Only MP4 and MOV files are supported.');
       return false;
     }
-    
-    if (file.size > 100 * 1024 * 1024) {
-      setError('File size too large. Maximum size is 100MB.');
+    if (f.size > 100 * 1024 * 1024) {
+      setError('File is too large. Maximum size is 100 MB.');
       return false;
     }
-    
     return true;
   };
 
+  /* ── Drop / change ─────────────────────────────── */
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      if (validateFile(droppedFile)) {
-        setFile(droppedFile);
-      }
-    }
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped && validateFile(dropped)) setFile(dropped);
   }, []);
 
   const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      if (validateFile(selectedFile)) {
-        setFile(selectedFile);
-      }
-    }
+    const selected = e.target.files?.[0];
+    if (selected && validateFile(selected)) setFile(selected);
   };
 
+  /* ── Upload ─────────────────────────────── */
   const handleUpload = async () => {
     if (!file) return;
-
     setUploading(true);
     setError(null);
     setUploadProgress(0);
@@ -72,120 +57,101 @@ const VideoUploader = ({ onUploadComplete, apiUrl }) => {
 
     try {
       const response = await axios.post(`${apiUrl}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (pe) => {
+          setUploadProgress(Math.round((pe.loaded * 100) / pe.total));
         },
       });
 
       if (response.data) {
-        // Mock a URL for the video player since it's now on the server
-        const fileUrl = `${apiUrl}/videos/${response.data.uploadId}${file.name.substring(file.name.lastIndexOf('.'))}`;
-        onUploadComplete(response.data, fileUrl);
+        const ext     = file.name.substring(file.name.lastIndexOf('.'));
+        const fileUrl = `${apiUrl}/videos/${response.data.uploadId}${ext}`;
+        onUploadComplete(response.data, fileUrl, file.name);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Error uploading file.');
+      setError(err.response?.data?.error || 'Upload failed. Please try again.');
       setUploading(false);
     }
   };
 
+  /* ── Zone class ─────────────────────────────── */
+  const zoneClass = [
+    'drop-zone',
+    isDragging ? 'dz-drag' : '',
+    file        ? 'dz-file' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className="w-full">
-      <div 
-        className={`relative group border-2 border-dashed rounded-3xl p-12 transition-all duration-300 ${
-          isDragging 
-            ? 'border-indigo-500 bg-indigo-500/10' 
-            : file 
-              ? 'border-emerald-500/50 bg-emerald-500/5' 
-              : 'border-gray-600 bg-gray-800/50 hover:border-gray-500 hover:bg-gray-800'
-        }`}
+    <div>
+      {/* Drop zone */}
+      <div
+        className={zoneClass}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
+        onClick={() => !file && !uploading && document.getElementById('fileInput').click()}
       >
         <input
-          type="file"
           id="fileInput"
-          className="hidden"
-          onChange={handleChange}
+          type="file"
+          style={{ display: 'none' }}
           accept="video/mp4,video/quicktime"
+          onChange={handleChange}
           disabled={uploading}
         />
-        
-        <div className="flex flex-col items-center justify-center text-center space-y-6">
-          <div className={`p-6 rounded-full transition-colors duration-300 ${
-            isDragging ? 'bg-indigo-500/20 text-indigo-400' :
-            file ? 'bg-emerald-500/20 text-emerald-400' :
-            'bg-gray-800 text-gray-400 group-hover:bg-gray-700'
-          }`}>
-            {file ? <CheckCircle2 className="w-12 h-12" /> : <UploadCloud className="w-12 h-12" />}
-          </div>
 
-          <div className="space-y-2">
-            <h3 className="text-2xl font-semibold">
-              {file ? file.name : 'Drag & drop your video here'}
-            </h3>
-            <p className="text-gray-400">
-              {file 
-                ? `${(file.size / (1024 * 1024)).toFixed(2)} MB • ${file.type}`
-                : 'Or click to browse files (MP4/MOV, max 100MB)'}
+        {file ? (
+          <>
+            <span className="dz-icon">✓</span>
+            <p className="dz-title">{file.name}</p>
+            <p className="dz-meta">
+              {(file.size / (1024 * 1024)).toFixed(2)} MB &nbsp;·&nbsp; {file.type}
             </p>
+          </>
+        ) : (
+          <>
+            <span className="dz-icon">{isDragging ? '📂' : '📁'}</span>
+            <p className="dz-title">
+              {isDragging ? 'Drop to add file' : 'Drag & drop your video here'}
+            </p>
+            <p className="dz-sub">or click to browse files</p>
+            <p className="dz-meta">Supports MP4 and MOV · max 100 MB</p>
+          </>
+        )}
+
+        {error && (
+          <div className="dz-error">
+            ⚠ {error}
           </div>
-
-          {!file && (
-            <label 
-              htmlFor="fileInput" 
-              className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-xl font-medium hover:bg-gray-100 transition-colors shadow-lg shadow-white/5 active:scale-95"
-            >
-              <FileVideo className="w-5 h-5" />
-              Browse Files
-            </label>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-400 bg-red-400/10 px-4 py-3 rounded-lg border border-red-400/20">
-              <AlertCircle className="w-5 h-5" />
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
+      {/* Upload button / progress */}
       {file && (
-        <div className="mt-8 flex flex-col items-center max-w-md mx-auto">
-          {!uploading ? (
-            <button
-              onClick={handleUpload}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-            >
-              Upload and Process <Activity className="w-5 h-5" />
-            </button>
-          ) : (
-            <div className="w-full space-y-3">
-              <div className="flex justify-between text-sm font-medium">
-                <span className="text-indigo-400">Uploading...</span>
+        <div className="upload-submit">
+          {uploading ? (
+            <div className="upload-progress" style={{ width: '100%' }}>
+              <div className="up-row">
+                <span>Uploading…</span>
                 <span>{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-3 border border-gray-700 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-300" 
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+              <div className="prog-track">
+                <div className="prog-fill" style={{ width: `${uploadProgress}%` }} />
               </div>
             </div>
-          )}
-          
-          {!uploading && (
-            <button
-              onClick={() => { setFile(null); setError(null); }}
-              className="mt-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              Clear selection
-            </button>
+          ) : (
+            <>
+              <button className="btn-primary" onClick={handleUpload}>
+                Analyse Video →
+              </button>
+              <button
+                className="btn-link"
+                onClick={() => { setFile(null); setError(null); }}
+              >
+                Clear selection
+              </button>
+            </>
           )}
         </div>
       )}

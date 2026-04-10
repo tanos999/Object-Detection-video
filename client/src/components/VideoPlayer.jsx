@@ -123,13 +123,13 @@ const VideoPlayer = forwardRef(({ videoUrl, results }, ref) => {
   }, [videoDimensions]);
 
   return (
-    <div className="relative w-full aspect-video bg-black group">
+    <div className="vp-wrap">
       {videoUrl ? (
         <>
           <video
             ref={videoRef}
             src={videoUrl}
-            className="w-full h-full object-contain"
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
             controls
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
@@ -140,20 +140,17 @@ const VideoPlayer = forwardRef(({ videoUrl, results }, ref) => {
           />
           <canvas
             ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full pointer-events-none"
-            style={{ objectFit: 'contain' }}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
           />
-          
-          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur text-white text-xs px-3 py-1.5 rounded-md font-mono border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <div className="vp-time">
             {Math.floor(currentTime / 60).toString().padStart(2, '0')}:
             {Math.floor(currentTime % 60).toString().padStart(2, '0')}
           </div>
         </>
       ) : (
-        <div className="flex items-center justify-center h-full text-gray-500 flex-col gap-3">
-          <div className="w-12 h-12 border-4 border-gray-700 border-t-indigo-500 rounded-full animate-spin"></div>
-          <p>Processing Video...</p>
+        <div className="vp-loading">
+          <div className="vp-spinner" />
+          <span>Processing video…</span>
         </div>
       )}
     </div>
