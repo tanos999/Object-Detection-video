@@ -50,8 +50,9 @@ npm run dev
 - `GET /api/results/:uploadId`: Returns JSON of all processed frames with bounding boxes, confidence, and class names.
 - `GET /api/videos/:filename`: Serves the original uploaded video for playback.
 
-## Demo Instructions (for browser agent)
-A test video will automatically upload and demonstrate the real time extraction and ML detection process. Bounding boxes appear as playback aligns with timestamps.
+##Live Demo
+Video briefing about the code db
+https://youtu.be/t9IgDsy0aGY
 
 ## Notes & Assumptions
 - Max video upload size is 100MB
