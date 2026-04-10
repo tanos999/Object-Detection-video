@@ -1,4 +1,4 @@
-# ObjectSense AI - Video Object Detection Pipeline
+# ObjectSense - Video Object Detection
 
 A full-stack monorepo application to upload videos, extract frames, process them through an ML server running YOLO object detection, and visualize the findings in real-time.
 
